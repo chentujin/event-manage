@@ -97,7 +97,7 @@
           <el-input v-model="profileForm.username" disabled />
         </el-form-item>
         <el-form-item label="真实姓名" prop="real_name">
-          <el-input v-model="profileForm.real_name" placeholder="请输入真实姓名" />
+          <el-input v-model="profileForm.real_name" disabled />
         </el-form-item>
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
@@ -105,7 +105,7 @@
         <el-form-item label="部门" prop="department">
           <el-input v-model="profileForm.department" placeholder="请输入部门" />
         </el-form-item>
-        <el-form-item label="手机号">
+        <el-form-item label="手机号" prop="phone_number">
           <el-input v-model="profileForm.phone_number" placeholder="请输入手机号" />
         </el-form-item>
       </el-form>
@@ -156,15 +156,15 @@ export default {
     })
     
     const profileRules = {
-      real_name: [
-        { required: true, message: '请输入真实姓名', trigger: 'blur' }
-      ],
       email: [
         { required: true, message: '请输入邮箱', trigger: 'blur' },
         { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
       ],
       department: [
         { required: true, message: '请输入部门', trigger: 'blur' }
+      ],
+      phone_number: [
+        { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号', trigger: 'blur' }
       ]
     }
     
@@ -215,17 +215,16 @@ export default {
         
         profileLoading.value = true
         
-        await users.update(profileForm.id, {
-          real_name: profileForm.real_name,
+        // 使用专门的个人设置更新API，只提交允许修改的字段
+        await users.updateProfile({
           email: profileForm.email,
           department: profileForm.department,
           phone_number: profileForm.phone_number
         })
         
-        // 更新本地用户信息
+        // 更新本地用户信息（保持真实姓名不变）
         updateUserInfo({
           ...getUserInfo(),
-          real_name: profileForm.real_name,
           email: profileForm.email,
           department: profileForm.department,
           phone_number: profileForm.phone_number
@@ -235,7 +234,12 @@ export default {
         profileDialogVisible.value = false
         
       } catch (error) {
-        ElMessage.error('更新失败')
+        console.error('更新个人设置失败:', error)
+        if (error.response?.data?.error) {
+          ElMessage.error(error.response.data.error)
+        } else {
+          ElMessage.error('更新失败')
+        }
       } finally {
         profileLoading.value = false
       }

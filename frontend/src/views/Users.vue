@@ -154,7 +154,7 @@
         <el-form-item label="部门" prop="department">
           <el-input v-model="createForm.department" placeholder="请输入部门" />
         </el-form-item>
-        <el-form-item label="手机号">
+        <el-form-item label="手机号" prop="phone_number">
           <el-input v-model="createForm.phone_number" placeholder="请输入手机号" />
         </el-form-item>
         <el-form-item label="角色" prop="roles">
@@ -187,7 +187,7 @@
         <el-form-item label="部门" prop="department">
           <el-input v-model="editForm.department" placeholder="请输入部门" />
         </el-form-item>
-        <el-form-item label="手机号">
+        <el-form-item label="手机号" prop="phone_number">
           <el-input v-model="editForm.phone_number" placeholder="请输入手机号" />
         </el-form-item>
         <el-form-item label="角色" prop="roles">
@@ -367,6 +367,9 @@ export default {
       ],
       roles: [
         { required: true, message: '请选择角色', trigger: 'change' }
+      ],
+      phone_number: [
+        { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号', trigger: 'blur' }
       ]
     }
     
@@ -383,6 +386,9 @@ export default {
       ],
       roles: [
         { required: true, message: '请选择角色', trigger: 'change' }
+      ],
+      phone_number: [
+        { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号', trigger: 'blur' }
       ]
     }
     

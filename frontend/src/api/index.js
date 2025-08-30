@@ -14,6 +14,7 @@ export const incidents = {
   update: (id, data) => request.put(`/incidents/${id}`, data),
   getLogs: (id) => request.get(`/incidents/${id}/logs`),
   getAssignableUsers: () => request.get('/incidents/assignable-users'),
+  addComment: (id, data) => request.post(`/incidents/${id}/comments`, data),
 }
 
 // 故障管理API
@@ -38,6 +39,7 @@ export const users = {
   list: (params) => request.get('/users', { params }),
   create: (data) => request.post('/users', data),
   update: (id, data) => request.put(`/users/${id}`, data),
+  updateProfile: (data) => request.put('/users/profile', data),  // 个人设置更新
   toggleStatus: (id, isActive) => request.put(`/users/${id}/status`, { is_active: isActive }),
   roles: () => request.get('/roles'),
   groups: () => request.get('/groups'),

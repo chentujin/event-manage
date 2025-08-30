@@ -1,4 +1,5 @@
 from flask import request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.api import api_v1
 from app import db
 from app.models import User, Role, Group
@@ -89,6 +90,40 @@ def create_user():
         db.session.rollback()
         logger.error(f'User creation error: {str(e)}')
         return jsonify({'error': 'User creation failed'}), 500
+
+@api_v1.route('/users/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    """更新个人设置（用户只能更新自己的信息）"""
+    current_user_id = get_jwt_identity()
+    user = User.query.get_or_404(current_user_id)
+    data = request.get_json()
+    
+    try:
+        # 检查邮箱是否已存在（排除当前用户）
+        if 'email' in data and data['email'] != user.email:
+            if User.query.filter_by(email=data['email']).first():
+                return jsonify({'error': 'Email already exists'}), 400
+        
+        # 只允许更新部分基本信息字段，不包括真实姓名
+        allowed_fields = ['email', 'department', 'phone_number']
+        for field in allowed_fields:
+            if field in data:
+                setattr(user, field, data[field])
+        
+        db.session.commit()
+        
+        logger.info(f'Profile updated by user: {user.username}')
+        
+        return jsonify({
+            'message': 'Profile updated successfully',
+            'user': user.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Profile update error: {str(e)}')
+        return jsonify({'error': 'Profile update failed'}), 500
 
 @api_v1.route('/users/<int:user_id>', methods=['PUT'])
 @permission_required('user:write')

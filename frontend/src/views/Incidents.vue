@@ -226,8 +226,8 @@
                     {{ getPriorityText(currentIncident.priority) }}
                   </el-tag>
                 </el-descriptions-item>
-                <el-descriptions-item label="影响度">{{ currentIncident.impact }}</el-descriptions-item>
-                <el-descriptions-item label="紧急度">{{ currentIncident.urgency }}</el-descriptions-item>
+                <el-descriptions-item label="影响度">{{ getImpactText(currentIncident.impact) }}</el-descriptions-item>
+                <el-descriptions-item label="紧急度">{{ getUrgencyText(currentIncident.urgency) }}</el-descriptions-item>
                 <el-descriptions-item label="关联服务">{{ currentIncident.service?.name || '-' }}</el-descriptions-item>
                 <el-descriptions-item label="报告人">{{ currentIncident.reporter?.real_name }}</el-descriptions-item>
                 <el-descriptions-item label="创建时间">{{ formatDate(currentIncident.created_at) }}</el-descriptions-item>
@@ -332,7 +332,7 @@
                   :type="getTimelineType(log.action)"
                 >
                   <div class="timeline-content">
-                    <div class="timeline-action">{{ log.action }}</div>
+                    <div class="timeline-action">{{ getActionText(log.action) }}</div>
                     <div v-if="log.comments" class="timeline-comments">{{ log.comments }}</div>
                     <div class="timeline-user">操作人: {{ log.user?.real_name || log.user?.username || '系统' }}</div>
                   </div>
@@ -340,11 +340,11 @@
               </el-timeline>
             </div>
             
-            <!-- 事件评论区域 -->
+            <!-- 事件小结区域 -->
             <div class="detail-section">
-              <h4>评论记录</h4>
+              <h4>小结记录</h4>
               
-              <!-- 评论列表 -->
+              <!-- 小结列表 -->
               <div class="comments-list" v-if="currentIncident.comments && currentIncident.comments.length > 0">
                 <div 
                   v-for="comment in currentIncident.comments" 
@@ -362,24 +362,24 @@
               </div>
               
               <div v-else class="no-comments">
-                <el-empty description="暂无评论" />
+                <el-empty description="暂无小结" />
               </div>
               
-              <!-- 添加评论 -->
+              <!-- 添加小结 -->
               <div v-if="currentIncident.status !== 'Closed'" class="add-comment-section">
                 <el-form :model="commentForm" label-width="80px">
-                  <el-form-item label="添加评论">
+                  <el-form-item label="添加小结">
                     <el-input 
                       v-model="commentForm.content" 
                       type="textarea" 
                       :rows="4" 
-                      placeholder="请输入评论内容..."
+                      placeholder="请输入小结内容..."
                       maxlength="1000"
                       show-word-limit
                     />
                   </el-form-item>
                   <el-form-item>
-                    <el-checkbox v-model="commentForm.is_private">私有评论</el-checkbox>
+                    <el-checkbox v-model="commentForm.is_private">私有小结</el-checkbox>
                     <el-button 
                       type="primary" 
                       size="small" 
@@ -388,7 +388,7 @@
                       :disabled="!commentForm.content.trim()"
                       style="margin-left: 10px;"
                     >
-                      添加评论
+                      添加小结
                     </el-button>
                   </el-form-item>
                 </el-form>
@@ -397,8 +397,8 @@
               <!-- 已关闭事件的提示信息 -->
               <div v-else class="closed-comment-tip">
                 <el-alert
-                  title="已关闭的事件无法添加评论"
-                  description="此事件已关闭，如需添加评论请先重新打开事件"
+                  title="已关闭的事件无法添加小结"
+                  description="此事件已关闭，如需添加小结请先重新打开事件"
                   type="info"
                   show-icon
                   :closable="false"
@@ -484,6 +484,26 @@ export default {
       urgency: [
         { required: true, message: '请选择紧急度', trigger: 'change' }
       ]
+    }
+    
+    // 影响度中文映射
+    const getImpactText = (impact) => {
+      const impactMap = {
+        'High': '高',
+        'Medium': '中',
+        'Low': '低'
+      }
+      return impactMap[impact] || impact
+    }
+    
+    // 紧急度中文映射
+    const getUrgencyText = (urgency) => {
+      const urgencyMap = {
+        'High': '高',
+        'Medium': '中',
+        'Low': '低'
+      }
+      return urgencyMap[urgency] || urgency
     }
     
     // 优先级中文映射
@@ -602,7 +622,7 @@ export default {
     
     const viewIncident = async (incident) => {
       try {
-        // 获取完整的事件详情（包含评论）
+        // 获取完整的事件详情（包含小结）
         const response = await incidents.get(incident.id)
         currentIncident.value = response.incident
         assigneeId.value = response.incident.assignee_id || null
@@ -719,11 +739,57 @@ export default {
     }
     
     const getTimelineType = (action) => {
-      if (action.includes('创建')) return 'primary'
-      if (action.includes('已解决')) return 'success'
-      if (action.includes('关闭')) return 'info'
-      if (action.includes('挂起')) return 'warning'
+      if (action.includes('创建') || action.includes('Created')) return 'primary'
+      if (action.includes('已解决') || action.includes('Resolved')) return 'success'
+      if (action.includes('关闭') || action.includes('Closed')) return 'info'
+      if (action.includes('挂起') || action.includes('Hold')) return 'warning'
       return 'primary'
+    }
+    
+    // 操作文本中文映射
+    const getActionText = (action) => {
+      const actionMap = {
+        'Created': '事件创建',
+        'Status Changed to In Progress': '状态变更为处理中',
+        'Status Changed to On Hold': '状态变更为挂起',
+        'Status Changed to Resolved': '状态变更为已解决',
+        'Status Changed to Closed': '状态变更为已关闭',
+        'Status Changed to Reopened': '状态变更为重新打开',
+        'Assigned': '事件分配',
+        'Reassigned': '重新分配',
+        'Comment Added': '添加小结',
+        // 处理带状态名称的动态文本
+        '状态更新为: In Progress': '状态变更为处理中',
+        '状态更新为: On Hold': '状态变更为挂起',
+        '状态更新为: Resolved': '状态变更为已解决',
+        '状态更新为: Closed': '状态变更为已关闭',
+        '状态更新为: Reopened': '状态变更为重新打开',
+        '状态更新为: New': '状态变更为待处理',
+        '事件创建': '事件创建',
+        '重新分配': '重新分配',
+        '事件分配': '事件分配'
+      }
+      
+      // 如果直接匹配成功
+      if (actionMap[action]) {
+        return actionMap[action]
+      }
+      
+      // 处理动态状态更新文本
+      if (action.includes('状态更新为:')) {
+        const status = action.split('状态更新为: ')[1]
+        const statusMap = {
+          'In Progress': '处理中',
+          'On Hold': '挂起',
+          'Resolved': '已解决',
+          'Closed': '已关闭',
+          'Reopened': '重新打开',
+          'New': '待处理'
+        }
+        return `状态变更为${statusMap[status] || status}`
+      }
+      
+      return action
     }
     
     const getPriorityType = (priority) => {
@@ -759,13 +825,13 @@ export default {
     
     const addComment = async () => {
       if (!currentIncident.value || !commentForm.content.trim()) {
-        ElMessage.warning('请输入评论内容')
+        ElMessage.warning('请输入小结内容')
         return
       }
       
-      // 检查事件状态，已关闭的事件不能添加评论
+      // 检查事件状态，已关闭的事件不能添加小结
       if (currentIncident.value.status === 'Closed') {
-        ElMessage.warning('已关闭的事件无法添加评论')
+        ElMessage.warning('已关闭的事件无法添加小结')
         return
       }
       
@@ -777,13 +843,13 @@ export default {
           is_private: commentForm.is_private
         })
         
-        ElMessage.success('评论添加成功')
+        ElMessage.success('小结添加成功')
         
-        // 清空评论表单
+        // 清空小结表单
         commentForm.content = ''
         commentForm.is_private = false
         
-        // 重新加载事件详情（包含评论）
+        // 重新加载事件详情（包含小结）
         try {
           const incidentResponse = await incidents.get(currentIncident.value.id)
           currentIncident.value = incidentResponse.incident
@@ -795,8 +861,8 @@ export default {
         loadIncidents()
         
       } catch (error) {
-        console.error('添加评论失败:', error)
-        ElMessage.error('添加评论失败')
+        console.error('添加小结失败:', error)
+        ElMessage.error('添加小结失败')
       } finally {
         commentLoading.value = false
       }
@@ -842,6 +908,9 @@ export default {
       getStatusType,
       getPriorityText,
       getStatusText,
+      getImpactText,
+      getUrgencyText,
+      getActionText,
       formatDate,
       isMyAssignment
     }
@@ -958,7 +1027,7 @@ export default {
   font-style: italic;
 }
 
-/* 评论区域样式 */
+/* 小结区域样式 */
 .comments-list {
   margin-bottom: 20px;
 }

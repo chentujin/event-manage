@@ -1,4 +1,5 @@
 from flask import request, jsonify
+from flask import request, jsonify
 from app.api import api_v1
 from app import db
 from app.models import Incident, IncidentComment, IncidentStatusLog, Service, User
@@ -257,7 +258,30 @@ def update_incident(incident_id):
         if 'assignee_id' in data:
             if not can_assign_incident(current_user, incident):
                 return jsonify({'error': 'Permission denied to assign incident'}), 403
-            incident.assignee_id = data['assignee_id']
+            
+            old_assignee_id = incident.assignee_id
+            new_assignee_id = data['assignee_id']
+            
+            if old_assignee_id != new_assignee_id:
+                incident.assignee_id = new_assignee_id
+                
+                # 获取分配人信息
+                if new_assignee_id:
+                    assignee = User.query.get(new_assignee_id)
+                    assignee_name = assignee.real_name or assignee.username if assignee else '未知用户'
+                else:
+                    assignee_name = '未分配'
+                
+                # 记录分配状态日志，使用被分配的用户ID
+                assign_log = IncidentStatusLog(
+                    incident_id=incident_id,
+                    user_id=new_assignee_id if new_assignee_id else current_user.id,  # 使用被分配的用户ID
+                    old_status=incident.status,
+                    new_status=incident.status,
+                    action='重新分配' if old_assignee_id else '事件分配',
+                    comments=f'事件已分配给 {assignee_name}'
+                )
+                db.session.add(assign_log)
         
         db.session.commit()
         
@@ -276,7 +300,7 @@ def update_incident(incident_id):
         return jsonify({'error': 'Incident update failed'}), 500
 
 @api_v1.route('/incidents/<int:incident_id>/comments', methods=['POST'])
-@permission_required('incident:comment')
+@permission_required('incident:write')
 def add_incident_comment(incident_id):
     """为事件添加评论"""
     incident = Incident.query.get_or_404(incident_id)
