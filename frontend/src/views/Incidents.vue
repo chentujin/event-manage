@@ -420,7 +420,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { incidents, services } from '@/api'
+import request from '@/utils/request'
 import { getUserInfo } from '@/utils/auth'
 import dayjs from 'dayjs'
 
@@ -546,7 +546,7 @@ export default {
           }
         })
         
-        const data = await incidents.list(params)
+        const data = await request.get('/incidents', { params })
         incidentsList.value = data.incidents || []
         pagination.total = data.total || 0
       } catch (error) {
@@ -558,7 +558,7 @@ export default {
     
     const loadServices = async () => {
       try {
-        const data = await services.list()
+        const data = await request.get('/services')
         servicesList.value = data.services || []
       } catch (error) {
         console.error('获取服务列表失败:', error)
@@ -567,7 +567,7 @@ export default {
     
     const loadUsers = async () => {
       try {
-        const data = await incidents.getAssignableUsers()
+        const data = await request.get('/incidents/assignable-users')
         usersList.value = data.users || []
       } catch (error) {
         console.error('获取用户列表失败:', error)
@@ -606,7 +606,7 @@ export default {
         
         createLoading.value = true
         
-        await incidents.create(createFormData)
+        await request.post('/incidents', createFormData)
         
         ElMessage.success('事件创建成功')
         showCreateDialog.value = false
@@ -623,14 +623,14 @@ export default {
     const viewIncident = async (incident) => {
       try {
         // 获取完整的事件详情（包含小结）
-        const response = await incidents.get(incident.id)
+        const response = await request.get(`/incidents/${incident.id}`)
         currentIncident.value = response.incident
         assigneeId.value = response.incident.assignee_id || null
         showDetailDialog.value = true
         
         // 从后端API获取事件状态日志
         try {
-          const logsResponse = await incidents.getLogs(incident.id)
+          const logsResponse = await request.get(`/incidents/${incident.id}/logs`)
           incidentLogs.value = logsResponse.logs || []
         } catch (error) {
           console.error('获取事件日志失败:', error)
@@ -671,7 +671,7 @@ export default {
       if (!currentIncident.value) return
       
       try {
-        await incidents.update(currentIncident.value.id, { status: newStatus })
+        await request.put(`/incidents/${currentIncident.value.id}`, { status: newStatus })
         
         ElMessage.success('事件状态更新成功')
         
@@ -680,7 +680,7 @@ export default {
         
         // 重新加载状态日志
         try {
-          const response = await incidents.getLogs(currentIncident.value.id)
+          const response = await request.get(`/incidents/${currentIncident.value.id}/logs`)
           incidentLogs.value = response.logs || []
         } catch (error) {
           console.error('刷新事件日志失败:', error)
@@ -709,7 +709,7 @@ export default {
       try {
         assignLoading.value = true
         
-        await incidents.update(currentIncident.value.id, { 
+        await request.put(`/incidents/${currentIncident.value.id}`, { 
           assignee_id: assigneeId.value 
         })
         
@@ -838,7 +838,7 @@ export default {
       try {
         commentLoading.value = true
         
-        const response = await incidents.addComment(currentIncident.value.id, {
+        const response = await request.post(`/incidents/${currentIncident.value.id}/comments`, {
           content: commentForm.content.trim(),
           is_private: commentForm.is_private
         })
@@ -851,7 +851,7 @@ export default {
         
         // 重新加载事件详情（包含小结）
         try {
-          const incidentResponse = await incidents.get(currentIncident.value.id)
+          const incidentResponse = await request.get(`/incidents/${currentIncident.value.id}`)
           currentIncident.value = incidentResponse.incident
         } catch (error) {
           console.error('刷新事件详情失败:', error)

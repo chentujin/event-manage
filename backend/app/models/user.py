@@ -1,6 +1,6 @@
 from datetime import datetime
 from app import db
-import bcrypt
+from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.ext.hybrid import hybrid_property
 
 # 关联表定义
@@ -40,21 +40,21 @@ class User(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # 关系
-    groups = db.relationship('Group', secondary=user_group, backref='members')
+    groups = db.relationship('Group', secondary=user_group)
     roles = db.relationship('Role', secondary=user_role, backref='users')
     
-    # 外键关系
-    incidents_reported = db.relationship('Incident', foreign_keys='Incident.reporter_id', backref='reporter')
-    incidents_assigned = db.relationship('Incident', foreign_keys='Incident.assignee_id', backref='assignee')
-    incident_comments = db.relationship('IncidentComment', backref='user')
+    # 暂时注释掉与Incident模型的外键关系，避免模型冲突
+    # incidents_reported = db.relationship('Incident', foreign_keys='Incident.reporter_id', backref='reporter')
+    # incidents_assigned = db.relationship('Incident', foreign_keys='Incident.assignee_id', backref='assignee')
+    # incident_comments = db.relationship('IncidentComment', backref='user')
     
     def set_password(self, password):
         """设置密码"""
-        self.password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        self.password_hash = generate_password_hash(password)
     
     def check_password(self, password):
         """验证密码"""
-        return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
+        return check_password_hash(self.password_hash, password)
     
     def has_permission(self, permission_code):
         """检查用户是否有指定权限"""
@@ -100,6 +100,7 @@ class Group(db.Model):
     # 关系
     manager = db.relationship('User', foreign_keys=[manager_id])
     roles = db.relationship('Role', secondary=group_role, backref='groups')
+    members = db.relationship('User', secondary=user_group)
     
     def to_dict(self):
         """转换为字典"""

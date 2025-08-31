@@ -58,7 +58,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
-import { auth } from '@/api'
+import request from '@/utils/request'
 import { setToken, setUserInfo } from '@/utils/auth'
 
 export default {
@@ -95,7 +95,7 @@ export default {
         
         loading.value = true
         
-        const response = await auth.login(form)
+        const response = await request.post('/auth/login', form)
         
         // 保存token和用户信息
         setToken(response.access_token)

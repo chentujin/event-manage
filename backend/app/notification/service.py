@@ -105,6 +105,14 @@ class WebhookChannel(NotificationChannel):
                         'content': f'{subject}\n{content}'
                     }
                 }
+            elif webhook_type == 'wechat' or 'weixin' in webhook_url.lower():
+                # 企业微信Webhook格式
+                payload = {
+                    'msgtype': 'text',
+                    'text': {
+                        'content': f'{subject}\n{content}'
+                    }
+                }
             else:  # generic webhook
                 payload = {
                     'text': f'{subject}\n{content}'

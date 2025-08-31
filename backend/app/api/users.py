@@ -36,6 +36,19 @@ def get_groups():
         'groups': [group.to_dict() for group in groups]
     }), 200
 
+@api_v1.route('/users/groups', methods=['GET'])
+@permission_required('user:read')
+def get_users_groups():
+    """获取用户组列表（兼容前端路由）"""
+    try:
+        groups = Group.query.all()
+        return jsonify({
+            'groups': [group.to_dict() for group in groups]
+        })
+    except Exception as e:
+        logger.error(f"获取用户组列表失败: {e}")
+        return jsonify({'error': '获取用户组列表失败'}), 500
+
 @api_v1.route('/users', methods=['POST'])
 @permission_required('user:write')
 def create_user():

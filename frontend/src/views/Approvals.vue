@@ -178,7 +178,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { approvals, users } from '@/api'
+import request from '@/utils/request'
 import dayjs from 'dayjs'
 
 export default {
@@ -222,7 +222,7 @@ export default {
     const loadApprovals = async () => {
       try {
         loading.value = true
-        const data = await approvals.list()
+        const data = await request.get('/approvals')
         approvalsList.value = data.approvals || []
       } catch (error) {
         ElMessage.error('获取审批列表失败')
@@ -234,7 +234,7 @@ export default {
     const loadWorkflows = async () => {
       try {
         workflowLoading.value = true
-        const data = await approvals.workflows()
+        const data = await request.get('/approvals/workflows')
         workflowsList.value = data.workflows || []
       } catch (error) {
         ElMessage.error('获取审批流程失败')
@@ -246,9 +246,9 @@ export default {
     const loadBasicData = async () => {
       try {
         const [usersData, rolesData, groupsData] = await Promise.all([
-          users.list(),
-          users.roles(),
-          users.groups()
+          request.get('/users'),
+          request.get('/users/roles'),
+          request.get('/users/groups')
         ])
         usersList.value = usersData.users || []
         rolesList.value = rolesData.roles || []

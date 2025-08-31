@@ -5,7 +5,7 @@ import { ElMessage } from 'element-plus'
 // 创建axios实例
 const api = axios.create({
   baseURL: '/api/v1',
-  timeout: 10000
+  timeout: 30000  // 增加到30秒，给邮件发送更多时间
 })
 
 // 请求拦截器

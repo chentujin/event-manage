@@ -74,6 +74,47 @@ def create_problem():
         )
         db.session.add(initial_log)
         
+        # 处理关联故障ID
+        incident_id = data.get('incident_id')
+        if incident_id:
+            # 查找对应的故障
+            from app.models import Incident
+            incident = None
+            try:
+                # 如果传入的是F-开头的格式，尝试提取数字部分
+                if isinstance(incident_id, str) and incident_id.startswith('F-'):
+                    try:
+                        # 尝试从F-20250831-007格式中提取数字
+                        parts = incident_id.split('-')
+                        if len(parts) >= 3:
+                            # 提取最后一部分作为数字ID
+                            numeric_part = parts[-1]
+                            incident_numeric_id = int(numeric_part)
+                            incident = Incident.query.get(incident_numeric_id)
+                            logger.info(f'Extracted numeric ID {incident_numeric_id} from {incident_id}')
+                    except (ValueError, TypeError, IndexError) as e:
+                        logger.warning(f'Failed to parse F-format incident ID {incident_id}: {e}')
+                
+                # 如果还是没找到，尝试直接转换为数字ID
+                if not incident:
+                    try:
+                        incident_numeric_id = int(incident_id)
+                        incident = Incident.query.get(incident_numeric_id)
+                        logger.info(f'Using incident ID directly: {incident_numeric_id}')
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f'Failed to convert incident ID to numeric: {incident_id}, error: {e}')
+                
+                if incident:
+                    # 建立关联关系
+                    problem.incidents.append(incident)
+                    logger.info(f'Problem {problem.id} successfully associated with incident {incident.id}')
+                else:
+                    # 如果找不到故障，记录日志但不阻止创建
+                    logger.warning(f'Incident with ID {incident_id} not found when creating problem {problem.id}')
+            except Exception as e:
+                logger.warning(f'Error finding incident {incident_id}: {e}')
+                # 继续创建问题，不阻止流程
+        
         db.session.commit()
         
         return jsonify({
@@ -128,6 +169,51 @@ def update_problem(problem_id):
             if field in data:
                 setattr(problem, field, data[field])
         
+        # 处理关联故障ID
+        incident_id = data.get('incident_id')
+        if incident_id is not None:  # 允许清空关联
+            # 清除现有关联
+            problem.incidents.clear()
+            
+            if incident_id:  # 如果提供了新的故障ID
+                # 查找对应的故障
+                from app.models import Incident
+                incident = None
+                try:
+                    # 如果传入的是F-开头的格式，尝试提取数字部分
+                    if isinstance(incident_id, str) and incident_id.startswith('F-'):
+                        try:
+                            # 尝试从F-20250831-007格式中提取数字
+                            parts = incident_id.split('-')
+                            if len(parts) >= 3:
+                                # 提取最后一部分作为数字ID
+                                numeric_part = parts[-1]
+                                incident_numeric_id = int(numeric_part)
+                                incident = Incident.query.get(incident_numeric_id)
+                                logger.info(f'Extracted numeric ID {incident_numeric_id} from {incident_id}')
+                        except (ValueError, TypeError, IndexError) as e:
+                            logger.warning(f'Failed to parse F-format incident ID {incident_id}: {e}')
+                    
+                    # 如果还是没找到，尝试直接转换为数字ID
+                    if not incident:
+                        try:
+                            incident_numeric_id = int(incident_id)
+                            incident = Incident.query.get(incident_numeric_id)
+                            logger.info(f'Using incident ID directly: {incident_numeric_id}')
+                        except (ValueError, TypeError) as e:
+                            logger.warning(f'Failed to convert incident ID to numeric: {incident_id}, error: {e}')
+                    
+                    if incident:
+                        # 建立新的关联关系
+                        problem.incidents.append(incident)
+                        logger.info(f'Problem {problem.id} successfully associated with incident {incident.id}')
+                    else:
+                        # 如果找不到故障，记录日志但不阻止更新
+                        logger.warning(f'Incident with ID {incident_id} not found when updating problem {problem.id}')
+                except Exception as e:
+                    logger.warning(f'Error finding incident {incident_id}: {e}')
+                    # 继续更新问题，不阻止流程
+        
         # 记录状态变更日志
         if 'status' in data and old_status != data['status']:
             status_log = ProblemStatusLog(
@@ -141,8 +227,6 @@ def update_problem(problem_id):
             db.session.add(status_log)
         
         db.session.commit()
-        
-        logger.info(f'Problem updated: {problem.title} by {current_user.username}')
         
         return jsonify({
             'message': 'Problem updated successfully',

@@ -120,7 +120,7 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Warning, CircleClose, Tools, Setting } from '@element-plus/icons-vue'
-import { dashboard, incidents } from '@/api'
+import request from '@/utils/request'
 import dayjs from 'dayjs'
 import {
   Chart,
@@ -159,7 +159,7 @@ export default {
     const loadOverview = async () => {
       try {
         loading.value = true
-        const data = await dashboard.overview()
+        const data = await request.get('/dashboard/overview')
         overview.value = data
       } catch (error) {
         ElMessage.error('获取概览数据失败')
@@ -170,7 +170,7 @@ export default {
     
     const loadRecentIncidents = async () => {
       try {
-        const data = await incidents.list({ per_page: 5 })
+        const data = await request.get('/incidents', { params: { per_page: 5 } })
         recentIncidents.value = data.incidents || []
       } catch (error) {
         console.error('获取最近事件失败:', error)
@@ -179,7 +179,7 @@ export default {
     
     const loadEventStatusData = async () => {
       try {
-        const data = await dashboard.eventStatusDistribution()
+        const data = await request.get('/dashboard/event-status-distribution')
         eventStatusData.value = data
         await nextTick()
         renderChart()

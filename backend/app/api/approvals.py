@@ -132,6 +132,22 @@ def get_my_pending_approvals():
         'pending_approvals': [approval.to_dict() for approval in pending_approvals]
     }), 200
 
+@api_v1.route('/approvals/workflows', methods=['GET'])
+@permission_required('approval:read')
+def get_approvals_workflows():
+    """获取审批流程列表（兼容前端路由）"""
+    try:
+        workflows = ApprovalWorkflow.query.filter(
+            ApprovalWorkflow.is_active == True
+        ).all()
+        
+        return jsonify({
+            'workflows': [workflow.to_dict() for workflow in workflows]
+        })
+    except Exception as e:
+        logger.error(f"获取审批流程失败: {e}")
+        return jsonify({'error': '获取审批流程失败'}), 500
+
 @api_v1.route('/approval-workflows', methods=['GET'])
 @permission_required('approval:admin')
 def get_approval_workflows():

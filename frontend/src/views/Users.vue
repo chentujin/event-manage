@@ -116,7 +116,7 @@
         </el-table-column>
         <el-table-column label="成员数" width="100">
           <template #default="scope">
-            {{ scope.row.members?.length || 0 }}
+            {{ scope.row.member_count || 0 }}
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="160">
@@ -275,7 +275,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
-import { users } from '@/api'
+import request from '@/utils/request'
 import dayjs from 'dayjs'
 
 export default {
@@ -420,7 +420,7 @@ export default {
           per_page: pagination.per_page,
           ...searchForm
         }
-        const data = await users.list(params)
+        const data = await request.get('/users', { params })
         usersList.value = data.users || []
         pagination.total = data.total || 0
       } catch (error) {
@@ -439,6 +439,7 @@ export default {
       const roleMap = {
         'Admin': '超级管理员',
         'Problem Manager': '故障经理',
+        'track-management': '质量管理',
         'Engineer': '工程师',
         'Service Desk': '服务台',
         'Viewer': '只读用户'
@@ -448,8 +449,9 @@ export default {
     
     const loadRoles = async () => {
       try {
-        const data = await users.roles()
+        const data = await request.get('/roles')
         rolesList.value = data.roles || []
+        console.log('加载的角色列表:', data.roles)
       } catch (error) {
         console.error('获取角色列表失败:', error)
       }
@@ -479,13 +481,14 @@ export default {
         if (!valid) return
         
         creating.value = true
-        await users.create(createForm)
+        await request.post('/users', createForm)
         
         ElMessage.success('用户创建成功')
         createDialogVisible.value = false
         resetCreateForm()
         loadUsers()
       } catch (error) {
+        console.error('用户创建失败:', error)
         ElMessage.error('用户创建失败')
       } finally {
         creating.value = false
@@ -515,7 +518,7 @@ export default {
         if (!valid) return
         
         updating.value = true
-        await users.update(editForm.id, editForm)
+        await request.put(`/users/${editForm.id}`, editForm)
         
         ElMessage.success('用户更新成功')
         editDialogVisible.value = false
@@ -536,7 +539,7 @@ export default {
           type: 'warning'
         })
         
-        await users.toggleStatus(user.id, !user.is_active)
+        await request.put(`/users/${user.id}/status`, { is_active: !user.is_active })
         ElMessage.success(`用户${action}成功`)
         loadUsers()
       } catch (error) {
@@ -550,7 +553,7 @@ export default {
     const loadGroups = async () => {
       try {
         groupLoading.value = true
-        const data = await users.groups()
+        const data = await request.get('/users/groups')
         groupsList.value = data.groups || []
       } catch (error) {
         ElMessage.error('获取用户组列表失败')
@@ -583,16 +586,17 @@ export default {
         groupSubmitting.value = true
         
         if (isEditGroup.value) {
-          await users.updateGroup(groupForm.id, groupForm)
+          await request.put(`/groups/${groupForm.id}`, groupForm)
           ElMessage.success('用户组更新成功')
         } else {
-          await users.createGroup(groupForm)
+          await request.post('/groups', groupForm)
           ElMessage.success('用户组创建成功')
         }
         
         groupDialogVisible.value = false
         loadGroups()
       } catch (error) {
+        console.error('用户组操作失败:', error)
         ElMessage.error(isEditGroup.value ? '用户组更新失败' : '用户组创建失败')
       } finally {
         groupSubmitting.value = false
@@ -618,7 +622,7 @@ export default {
           type: 'warning'
         })
         
-        await users.deleteGroup(group.id)
+        await request.delete(`/groups/${group.id}`)
         ElMessage.success('用户组删除成功')
         loadGroups()
       } catch (error) {
@@ -631,7 +635,7 @@ export default {
     const manageGroupMembers = async (group) => {
       try {
         currentGroupId.value = group.id
-        const data = await users.getGroupMembers(group.id)
+        const data = await request.get(`/groups/${group.id}/members`)
         currentGroupMembers.value = data.members || []
         membersDialogVisible.value = true
         selectedUserId.value = null
@@ -648,14 +652,17 @@ export default {
       
       try {
         addingMember.value = true
-        await users.addGroupMember(currentGroupId.value, selectedUserId.value)
+        await request.post(`/groups/${currentGroupId.value}/members`, {
+          user_id: selectedUserId.value
+        })
         ElMessage.success('成员添加成功')
         
         // 重新加载成员列表
-        const data = await users.getGroupMembers(currentGroupId.value)
+        const data = await request.get(`/groups/${currentGroupId.value}/members`)
         currentGroupMembers.value = data.members || []
         selectedUserId.value = null
       } catch (error) {
+        console.error('成员添加失败:', error)
         ElMessage.error('成员添加失败')
       } finally {
         addingMember.value = false
@@ -670,14 +677,15 @@ export default {
           type: 'warning'
         })
         
-        await users.removeGroupMember(currentGroupId.value, member.id)
+        await request.delete(`/groups/${currentGroupId.value}/members/${member.id}`)
         ElMessage.success('成员移除成功')
         
         // 重新加载成员列表
-        const data = await users.getGroupMembers(currentGroupId.value)
+        const data = await request.get(`/groups/${currentGroupId.value}/members`)
         currentGroupMembers.value = data.members || []
       } catch (error) {
         if (error !== 'cancel') {
+          console.error('成员移除失败:', error)
           ElMessage.error('成员移除失败')
         }
       }

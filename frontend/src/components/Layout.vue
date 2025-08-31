@@ -21,14 +21,29 @@
           <span>仪表盘</span>
         </el-menu-item>
         
+        <el-menu-item index="/alerts">
+          <el-icon><Bell /></el-icon>
+          <span>告警管理</span>
+        </el-menu-item>
+        
         <el-menu-item index="/incidents">
           <el-icon><Warning /></el-icon>
           <span>事件管理</span>
         </el-menu-item>
         
+        <el-menu-item index="/incidents-new">
+          <el-icon><Flag /></el-icon>
+          <span>故障管理</span>
+        </el-menu-item>
+        
         <el-menu-item index="/problems">
           <el-icon><Tools /></el-icon>
-          <span>故障管理</span>
+          <span>问题管理</span>
+        </el-menu-item>
+        
+        <el-menu-item index="/postmortems">
+          <el-icon><Document /></el-icon>
+          <span>复盘管理</span>
         </el-menu-item>
         
         <el-menu-item index="/services">
@@ -128,14 +143,14 @@ import { getUserInfo, removeToken, updateUserInfo } from '@/utils/auth'
 import { users } from '@/api'
 import {
   Monitor, Warning, Tools, Setting, Document, User, Message,
-  Fold, Expand, Avatar, CaretBottom
+  Fold, Expand, Avatar, CaretBottom, Bell, Flag
 } from '@element-plus/icons-vue'
 
 export default {
   name: 'Layout',
   components: {
     Monitor, Warning, Tools, Setting, Document, User, Message,
-    Fold, Expand, Avatar, CaretBottom
+    Fold, Expand, Avatar, CaretBottom, Bell, Flag
   },
   setup() {
     const router = useRouter()

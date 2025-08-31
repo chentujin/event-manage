@@ -1,5 +1,4 @@
 from flask import request, jsonify
-from flask import request, jsonify
 from app.api import api_v1
 from app import db
 from app.models import Incident, IncidentComment, IncidentStatusLog, Service, User
@@ -13,191 +12,137 @@ logger = logging.getLogger(__name__)
 @permission_required('incident:read')
 def get_assignable_users():
     """获取可分配的用户列表事件分配使用"""
-    # 只返回活跃用户的基本信息，用于事件分配
-    users = User.query.filter(User.is_active == True).all()
-    return jsonify({
-        'users': [{
-            'id': user.id,
-            'username': user.username,
-            'real_name': user.real_name,
-            'department': user.department
-        } for user in users]
-    }), 200
+    try:
+        # 获取所有激活的用户
+        users = User.query.filter_by(is_active=True).all()
+        return jsonify({
+            'users': [user.to_dict() for user in users]
+        })
+    except Exception as e:
+        logger.error(f"获取可分配用户失败: {e}")
+        return jsonify({'error': '获取用户列表失败'}), 500
 
 @api_v1.route('/incidents', methods=['GET'])
 @permission_required('incident:read')
 def get_incidents():
     """获取事件列表"""
-    page = request.args.get('page', 1, type=int)
-    per_page = min(request.args.get('per_page', 20, type=int), 100)
-    
-    # 筛选参数
-    status_filter = request.args.get('status')
-    priority_filter = request.args.get('priority')
-    service_id_filter = request.args.get('service_id', type=int)
-    assignment_filter = request.args.get('assignment')
-    
-    # 构建查询
-    query = Incident.query
-    
-    # 应用筛选条件
-    if status_filter:
-        query = query.filter(Incident.status == status_filter)
-    
-    if priority_filter:
-        # 根据 priority 筛选需要特殊处理，因为它是计算属性
-        if priority_filter == 'Critical':
-            query = query.filter(Incident.impact == 'High', Incident.urgency == 'High')
-        elif priority_filter == 'High':
-            query = query.filter(
-                db.or_(
-                    db.and_(Incident.impact == 'High', Incident.urgency == 'Medium'),
-                    db.and_(Incident.impact == 'Medium', Incident.urgency == 'High')
-                )
-            )
-        elif priority_filter == 'Medium':
-            query = query.filter(
-                db.or_(
-                    db.and_(Incident.impact == 'High', Incident.urgency == 'Low'),
-                    db.and_(Incident.impact == 'Medium', Incident.urgency == 'Medium'),
-                    db.and_(Incident.impact == 'Low', Incident.urgency == 'High')
-                )
-            )
-        elif priority_filter == 'Low':
-            query = query.filter(
-                db.or_(
-                    db.and_(Incident.impact == 'Medium', Incident.urgency == 'Low'),
-                    db.and_(Incident.impact == 'Low', Incident.urgency == 'Medium'),
-                    db.and_(Incident.impact == 'Low', Incident.urgency == 'Low')
-                )
-            )
-    
-    if service_id_filter:
-        query = query.filter(Incident.service_id == service_id_filter)
-    
-    # 分配状态筛选
-    if assignment_filter:
-        current_user = get_current_user()
-        if assignment_filter == 'mine':
-            query = query.filter(Incident.assignee_id == current_user.id)
-        elif assignment_filter == 'unassigned':
-            query = query.filter(Incident.assignee_id.is_(None))
-        elif assignment_filter == 'assigned':
-            query = query.filter(Incident.assignee_id.isnot(None))
-    
-    # 排序和分页
-    pagination = query.order_by(Incident.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-    
-    # 为每个事件获取最后更新状态的用户
-    incidents_data = []
-    for incident in pagination.items:
-        incident_dict = incident.to_dict()
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        status = request.args.get('status')
+        service_id = request.args.get('service_id', type=int)
         
-        # 获取最后一次状态更新的用户
-        last_log = IncidentStatusLog.query.filter_by(
-            incident_id=incident.id
-        ).order_by(IncidentStatusLog.created_at.desc()).first()
+        # 构建查询
+        query = Incident.query
         
-        if last_log and last_log.user:
-            incident_dict['last_updated_user'] = {
-                'id': last_log.user.id,
-                'username': last_log.user.username,
-                'real_name': last_log.user.real_name
+        if status:
+            query = query.filter(Incident.status == status)
+        if service_id:
+            query = query.filter(Incident.service_id == service_id)
+        
+        # 分页
+        pagination = query.order_by(Incident.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        return jsonify({
+            'incidents': [incident.to_dict() for incident in pagination.items],
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': pagination.total,
+                'pages': pagination.pages
             }
-        else:
-            incident_dict['last_updated_user'] = None
-            
-        incidents_data.append(incident_dict)
-    
-    return jsonify({
-        'incidents': incidents_data,
-        'total': pagination.total,
-        'page': page,
-        'per_page': per_page,
-        'pages': pagination.pages
-    }), 200
+        })
+    except Exception as e:
+        logger.error(f"获取事件列表失败: {e}")
+        return jsonify({'error': '获取事件列表失败'}), 500
 
 @api_v1.route('/incidents/<int:incident_id>', methods=['GET'])
 @permission_required('incident:read')
 def get_incident(incident_id):
     """获取事件详情"""
-    incident = Incident.query.get_or_404(incident_id)
-    
-    # 获取评论
-    comments = IncidentComment.query.filter_by(
-        incident_id=incident_id
-    ).order_by(IncidentComment.created_at.asc()).all()
-    
-    result = incident.to_dict()
-    result['comments'] = [comment.to_dict() for comment in comments]
-    
-    return jsonify({'incident': result}), 200
+    try:
+        incident = Incident.query.get_or_404(incident_id)
+        return jsonify({'incident': incident.to_dict()})
+    except Exception as e:
+        logger.error(f"获取事件详情失败: {e}")
+        return jsonify({'error': '获取事件详情失败'}), 500
 
 @api_v1.route('/incidents/<int:incident_id>/logs', methods=['GET'])
 @permission_required('incident:read')
 def get_incident_logs(incident_id):
     """获取事件状态变更日志"""
-    incident = Incident.query.get_or_404(incident_id)
-    
-    # 获取状态变更日志
-    status_logs = IncidentStatusLog.query.filter_by(
-        incident_id=incident_id
-    ).order_by(IncidentStatusLog.created_at.asc()).all()
-    
-    return jsonify({
-        'logs': [log.to_dict() for log in status_logs]
-    }), 200
+    try:
+        logs = IncidentStatusLog.query.filter_by(incident_id=incident_id).order_by(IncidentStatusLog.created_at.desc()).all()
+        return jsonify({
+            'logs': [log.to_dict() for log in logs]
+        })
+    except Exception as e:
+        logger.error(f"获取事件日志失败: {e}")
+        return jsonify({'error': '获取事件日志失败'}), 500
 
 @api_v1.route('/incidents', methods=['POST'])
 @permission_required('incident:write')
 def create_incident():
     """创建事件"""
-    data = request.get_json()
-    current_user = get_current_user()
-    
-    required_fields = ['title', 'description', 'impact', 'urgency']
-    for field in required_fields:
-        if not data.get(field):
-            return jsonify({'error': f'{field} is required'}), 400
-    
     try:
+        data = request.get_json()
+        current_user = get_current_user()
+        
+        # 兼容前端字段名称
+        title = data.get('title') or data.get('故障标题')
+        description = data.get('description') or data.get('故障描述')
+        impact = data.get('impact') or data.get('severity') or 'Medium'
+        urgency = data.get('urgency') or 'Medium'
+        
+        # 验证必填字段
+        if not title:
+            return jsonify({'error': '标题是必填字段'}), 400
+        if not description:
+            return jsonify({'error': '描述是必填字段'}), 400
+        if not impact:
+            return jsonify({'error': '影响度是必填字段'}), 400
+        if not urgency:
+            return jsonify({'error': '紧急度是必填字段'}), 400
+        
+        # 验证枚举值
+        valid_impacts = ['High', 'Medium', 'Low', '高', '中', '低']
+        valid_urgencies = ['High', 'Medium', 'Low', '高', '中', '低']
+        
+        if impact not in valid_impacts:
+            return jsonify({'error': '无效的影响度值'}), 400
+        if urgency not in valid_urgencies:
+            return jsonify({'error': '无效的紧急度值'}), 400
+        
+        # 将中文值转换为英文
+        impact_map = {'高': 'High', '中': 'Medium', '低': 'Low'}
+        urgency_map = {'高': 'High', '中': 'Medium', '低': 'Low'}
+        
+        impact = impact_map.get(impact, impact)
+        urgency = urgency_map.get(urgency, urgency)
+        
+        # 创建事件
         incident = Incident(
-            title=data['title'],
-            description=data['description'],
-            impact=data['impact'],
-            urgency=data['urgency'],
-            service_id=data.get('service_id'),
-            assignee_id=data.get('assignee_id'),
-            reporter_id=current_user.id
+            title=title,
+            description=description,
+            impact=impact,
+            urgency=urgency,
+            service_id=data.get('service_id') or 1,  # 默认服务ID
+            assignee_id=data.get('assignee_id') or current_user.id,
+            reporter_id=current_user.id,
+            status='New'
         )
         
         db.session.add(incident)
-        db.session.flush()  # 获取incident.id
-        
-        # 记录初始状态日志
-        initial_log = IncidentStatusLog(
-            incident_id=incident.id,
-            user_id=current_user.id,
-            old_status=None,
-            new_status='New',
-            action='事件创建',
-            comments=f'用户报告的新事件'
-        )
-        db.session.add(initial_log)
-        
         db.session.commit()
         
-        return jsonify({
-            'message': 'Incident created successfully',
-            'incident': incident.to_dict()
-        }), 201
+        return jsonify(incident.to_dict()), 201
         
     except Exception as e:
+        logger.error(f"创建事件失败: {e}")
         db.session.rollback()
-        logger.error(f'Incident creation error: {str(e)}')
-        return jsonify({'error': 'Incident creation failed'}), 500
+        return jsonify({'error': f'创建事件失败: {str(e)}'}), 500
 
 @api_v1.route('/incidents/<int:incident_id>', methods=['PUT'])
 @permission_required('incident:write')
@@ -249,10 +194,15 @@ def update_incident(incident_id):
                 db.session.add(status_log)
             
             # 自动设置时间戳
-            if new_status == 'Resolved' and old_status != 'Resolved':
+            if new_status == 'In Progress' and old_status != 'In Progress':
+                incident.started_at = incident.started_at or datetime.utcnow()
+            elif new_status == 'Resolved' and old_status != 'Resolved':
                 incident.resolved_at = datetime.utcnow()
             elif new_status == 'Closed' and old_status != 'Closed':
                 incident.closed_at = datetime.utcnow()
+            elif new_status == 'Reopened':
+                incident.resolved_at = None
+                incident.closed_at = None
         
         # 分配人更新（需要权限检查）
         if 'assignee_id' in data:
@@ -471,6 +421,8 @@ def close_incident(incident_id):
         db.session.rollback()
         logger.error(f'Incident closure error: {str(e)}')
         return jsonify({'error': 'Incident closure failed'}), 500
+
+
 
 @api_v1.route('/incidents/<int:incident_id>/reopen', methods=['POST'])
 @permission_required('incident:write')

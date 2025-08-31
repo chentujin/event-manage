@@ -111,7 +111,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { services } from '@/api'
+import request from '@/utils/request'
 
 export default {
   name: 'Services',
@@ -176,7 +176,7 @@ export default {
           }
         })
         
-        const data = await services.list(params)
+        const data = await request.get('/services', { params })
         servicesList.value = data.services || []
         pagination.total = data.total || 0
       } catch (error) {
@@ -223,10 +223,10 @@ export default {
         submitting.value = true
         
         if (isEdit.value) {
-          await services.update(form.id, form)
+          await request.put(`/services/${form.id}`, form)
           ElMessage.success('服务更新成功')
         } else {
-          await services.create(form)
+          await request.post('/services', form)
           ElMessage.success('服务创建成功')
         }
         

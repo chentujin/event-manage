@@ -55,7 +55,7 @@
             <el-form-item label="短信通知">
               <el-switch v-model="preferences.sms" @change="updatePreferences" />
             </el-form-item>
-            <el-form-item label="语音电话">
+            <el-form-item label="语音服务">
               <el-switch v-model="preferences.voice_call" @change="updatePreferences" />
             </el-form-item>
             <el-form-item label="Webhook">
@@ -111,7 +111,7 @@
           <el-select v-model="testForm.channel_type" placeholder="请选择通知类型">
             <el-option label="邮件" value="EMAIL" />
             <el-option label="短信" value="SMS" />
-            <el-option label="语音电话" value="VOICE_CALL" />
+            <el-option label="语音服务" value="VOICE_CALL" />
             <el-option label="Webhook" value="WEBHOOK" />
           </el-select>
         </el-form-item>
@@ -149,19 +149,19 @@
         <!-- 邮件配置 -->
         <template v-if="configForm.type === 'EMAIL'">
           <el-divider content-position="left">邮件服务器配置</el-divider>
-          <el-form-item label="SMTP服务器" prop="smtp_host">
+          <el-form-item label="SMTP服务器" prop="config.smtp_host">
             <el-input v-model="configForm.config.smtp_host" placeholder="smtp.example.com" />
           </el-form-item>
-          <el-form-item label="SMTP端口" prop="smtp_port">
+          <el-form-item label="SMTP端口" prop="config.smtp_port">
             <el-input-number v-model="configForm.config.smtp_port" :min="1" :max="65535" placeholder="587" />
           </el-form-item>
-          <el-form-item label="发件人邮箱" prop="from_email">
+          <el-form-item label="发件人邮箱" prop="config.from_email">
             <el-input v-model="configForm.config.from_email" placeholder="noreply@example.com" />
           </el-form-item>
-          <el-form-item label="用户名" prop="smtp_username">
+          <el-form-item label="用户名" prop="config.smtp_username">
             <el-input v-model="configForm.config.smtp_username" placeholder="SMTP用户名" />
           </el-form-item>
-          <el-form-item label="密码" prop="smtp_password">
+          <el-form-item label="密码" prop="config.smtp_password">
             <el-input v-model="configForm.config.smtp_password" type="password" placeholder="SMTP密码" show-password />
           </el-form-item>
           <el-form-item label="启用TLS">
@@ -172,23 +172,23 @@
         <!-- 短信配置 -->
         <template v-if="configForm.type === 'SMS'">
           <el-divider content-position="left">短信服务配置</el-divider>
-          <el-form-item label="服务商" prop="provider">
+          <el-form-item label="服务商" prop="config.provider">
             <el-select v-model="configForm.config.provider" placeholder="请选择短信服务商">
               <el-option label="阿里云短信" value="aliyun" />
               <el-option label="腾讯云短信" value="tencent" />
               <el-option label="华为云短信" value="huawei" />
             </el-select>
           </el-form-item>
-          <el-form-item label="Access Key" prop="access_key">
+          <el-form-item label="Access Key" prop="config.access_key">
             <el-input v-model="configForm.config.access_key" placeholder="请输入Access Key" />
           </el-form-item>
-          <el-form-item label="Secret Key" prop="secret_key">
+          <el-form-item label="Secret Key" prop="config.secret_key">
             <el-input v-model="configForm.config.secret_key" type="password" placeholder="请输入Secret Key" show-password />
           </el-form-item>
-          <el-form-item label="短信签名" prop="sign_name">
+          <el-form-item label="短信签名" prop="config.sign_name">
             <el-input v-model="configForm.config.sign_name" placeholder="请输入短信签名" />
           </el-form-item>
-          <el-form-item label="模板ID" prop="template_id">
+          <el-form-item label="模板ID" prop="config.template_id">
             <el-input v-model="configForm.config.template_id" placeholder="请输入短信模板ID" />
           </el-form-item>
         </template>
@@ -196,19 +196,19 @@
         <!-- 语音电话配置 -->
         <template v-if="configForm.type === 'VOICE_CALL'">
           <el-divider content-position="left">语音服务配置</el-divider>
-          <el-form-item label="服务商" prop="provider">
+          <el-form-item label="服务商" prop="config.provider">
             <el-select v-model="configForm.config.provider" placeholder="请选择语音服务商">
               <el-option label="阿里云语音" value="aliyun" />
               <el-option label="腾讯云语音" value="tencent" />
             </el-select>
           </el-form-item>
-          <el-form-item label="Access Key" prop="access_key">
+          <el-form-item label="Access Key" prop="config.access_key">
             <el-input v-model="configForm.config.access_key" placeholder="请输入Access Key" />
           </el-form-item>
-          <el-form-item label="Secret Key" prop="secret_key">
+          <el-form-item label="Secret Key" prop="config.secret_key">
             <el-input v-model="configForm.config.secret_key" type="password" placeholder="请输入Secret Key" show-password />
           </el-form-item>
-          <el-form-item label="语音模板" prop="voice_template">
+          <el-form-item label="语音模板" prop="config.voice_template">
             <el-input v-model="configForm.config.voice_template" placeholder="请输入语音模板内容" />
           </el-form-item>
         </template>
@@ -216,10 +216,10 @@
         <!-- Webhook配置 -->
         <template v-if="configForm.type === 'WEBHOOK'">
           <el-divider content-position="left">Webhook配置</el-divider>
-          <el-form-item label="Webhook URL" prop="webhook_url">
+          <el-form-item label="Webhook URL" prop="config.webhook_url">
             <el-input v-model="configForm.config.webhook_url" placeholder="https://example.com/webhook" />
           </el-form-item>
-          <el-form-item label="请求方法" prop="method">
+          <el-form-item label="请求方法" prop="config.method">
             <el-select v-model="configForm.config.method" placeholder="请选择请求方法">
               <el-option label="POST" value="POST" />
               <el-option label="PUT" value="PUT" />
@@ -228,7 +228,7 @@
           <el-form-item label="请求头">
             <el-input v-model="configForm.config.headers" type="textarea" placeholder='示例: {"Content-Type": "application/json", "Authorization": "Bearer token"}' :rows="3" />
           </el-form-item>
-          <el-form-item label="超时时间(秒)" prop="timeout">
+          <el-form-item label="超时时间(秒)" prop="config.timeout">
             <el-input-number v-model="configForm.config.timeout" :min="1" :max="60" placeholder="30" />
           </el-form-item>
         </template>
@@ -241,6 +241,63 @@
         </span>
       </template>
     </el-dialog>
+    
+    <!-- 日志详情对话框 -->
+    <el-dialog
+      v-model="logDetailDialogVisible"
+      title="通知日志详情"
+      width="600px"
+      :before-close="closeLogDetailDialog"
+    >
+      <div v-if="selectedLog" class="log-detail">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="日志ID">{{ selectedLog.id }}</el-descriptions-item>
+          <el-descriptions-item label="触发事件">{{ selectedLog.trigger_event_name || selectedLog.trigger_event }}</el-descriptions-item>
+          <el-descriptions-item label="通知渠道">{{ selectedLog.channel_type_name || selectedLog.channel_type }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="selectedLog.status === 'SUCCESS' ? 'success' : 'danger'" size="small">
+              {{ selectedLog.status_name || selectedLog.status }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="发送时间" :span="2">
+            {{ formatDate(selectedLog.created_at) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="目标用户" :span="2">
+            <span v-if="selectedLog.target_user">
+              {{ selectedLog.target_user.real_name || selectedLog.target_user.username }} 
+              ({{ selectedLog.target_user.email }})
+            </span>
+            <span v-else class="text-muted">未指定用户</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="请求内容" :span="2">
+            <div class="content-box">
+              {{ selectedLog.request_content || '无' }}
+            </div>
+          </el-descriptions-item>
+          <el-descriptions-item label="响应内容" :span="2">
+            <div class="content-box">
+              {{ selectedLog.response_content || '无' }}
+            </div>
+          </el-descriptions-item>
+          <el-descriptions-item label="外部ID" :span="2">
+            {{ selectedLog.external_id || '无' }}
+          </el-descriptions-item>
+          <el-descriptions-item v-if="selectedLog.call_duration" label="通话时长" :span="2">
+            {{ selectedLog.call_duration }}秒
+          </el-descriptions-item>
+          <el-descriptions-item v-if="selectedLog.call_status" label="通话状态" :span="2">
+            {{ selectedLog.call_status }}
+          </el-descriptions-item>
+          <el-descriptions-item v-if="selectedLog.dtmf_input" label="按键输入" :span="2">
+            {{ selectedLog.dtmf_input }}
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
+      
+      <template #footer>
+        <el-button @click="closeLogDetailDialog">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -248,7 +305,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Message } from '@element-plus/icons-vue'
-import { notifications } from '@/api'
+import request from '@/utils/request'
 import dayjs from 'dayjs'
 
 export default {
@@ -265,6 +322,10 @@ export default {
     const configDialogVisible = ref(false)
     const configFormRef = ref(null)
     const currentEditingChannel = ref(null)
+    
+    // 日志详情相关
+    const logDetailDialogVisible = ref(false)
+    const selectedLog = ref(null)
     
     const preferences = reactive({
       email: true,
@@ -311,28 +372,49 @@ export default {
       name: [
         { required: true, message: '请输入渠道名称', trigger: 'blur' }
       ],
-      smtp_host: [
+      'config.smtp_host': [
         { required: true, message: '请输入SMTP服务器地址', trigger: 'blur' }
       ],
-      smtp_port: [
+      'config.smtp_port': [
         { required: true, message: '请输入SMTP端口', trigger: 'blur' }
       ],
-      from_email: [
+      'config.from_email': [
         { required: true, message: '请输入发件人邮箱', trigger: 'blur' },
         { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
       ],
-      provider: [
+      'config.smtp_username': [
+        { required: true, message: '请输入SMTP用户名', trigger: 'blur' }
+      ],
+      'config.smtp_password': [
+        { required: true, message: '请输入SMTP密码', trigger: 'blur' }
+      ],
+      'config.provider': [
         { required: true, message: '请选择服务商', trigger: 'change' }
       ],
-      access_key: [
+      'config.access_key': [
         { required: true, message: '请输入Access Key', trigger: 'blur' }
       ],
-      secret_key: [
+      'config.secret_key': [
         { required: true, message: '请输入Secret Key', trigger: 'blur' }
       ],
-      webhook_url: [
+      'config.sign_name': [
+        { required: true, message: '请输入短信签名', trigger: 'blur' }
+      ],
+      'config.template_id': [
+        { required: true, message: '请输入模板ID', trigger: 'blur' }
+      ],
+      'config.voice_template': [
+        { required: true, message: '请输入语音模板内容', trigger: 'blur' }
+      ],
+      'config.webhook_url': [
         { required: true, message: '请输入Webhook URL', trigger: 'blur' },
         { type: 'url', message: '请输入正确的URL地址', trigger: 'blur' }
+      ],
+      'config.method': [
+        { required: true, message: '请选择请求方法', trigger: 'change' }
+      ],
+      'config.timeout': [
+        { required: true, message: '请输入超时时间', trigger: 'blur' }
       ]
     }
     
@@ -343,15 +425,20 @@ export default {
     const loadChannels = async () => {
       try {
         loading.value = true
-        // 模拟数据，实际应该从API获取
+        // 从API获取通知渠道列表
+        const response = await request.get('/notification/channels')
+        // 后端直接返回数组，不需要.channels
+        channelsList.value = response || []
+      } catch (error) {
+        console.error('加载通知渠道失败:', error)
+        ElMessage.error('加载通知渠道失败')
+        // 如果API失败，使用默认数据
         channelsList.value = [
           { id: 1, name: '系统邮件', type: 'EMAIL', is_active: true },
           { id: 2, name: '短信通知', type: 'SMS', is_active: false },
-          { id: 3, name: '语音告警', type: 'VOICE_CALL', is_active: true },
+          { id: 3, name: '语音告警', type: 'VOICE_CALL', is_active: false },
           { id: 4, name: 'Webhook集成', type: 'WEBHOOK', is_active: true }
         ]
-      } catch (error) {
-        ElMessage.error('获取通知渠道失败')
       } finally {
         loading.value = false
       }
@@ -360,27 +447,13 @@ export default {
     const loadNotificationLogs = async () => {
       try {
         logsLoading.value = true
-        // 模拟数据，实际应该从API获取
-        logsList.value = [
-          {
-            id: 1,
-            trigger_event: 'incident_created',
-            channel_type: 'EMAIL',
-            target_user_id: 1,
-            status: 'SUCCESS',
-            created_at: new Date().toISOString()
-          },
-          {
-            id: 2,
-            trigger_event: 'problem_approved',
-            channel_type: 'SMS',
-            target_user_id: 2,
-            status: 'FAILED',
-            created_at: new Date(Date.now() - 3600000).toISOString()
-          }
-        ]
+        // 从API获取通知日志列表
+        const response = await request.get('/notification/logs')
+        logsList.value = response.logs || []
       } catch (error) {
+        console.error('获取通知日志失败:', error)
         ElMessage.error('获取通知日志失败')
+        logsList.value = []
       } finally {
         logsLoading.value = false
       }
@@ -400,7 +473,7 @@ export default {
       const types = {
         'EMAIL': '邮件',
         'SMS': '短信',
-        'VOICE_CALL': '语音电话',
+        'VOICE_CALL': '语音服务',
         'WEBHOOK': 'Webhook'
       }
       return types[type] || type
@@ -447,18 +520,45 @@ export default {
     
     const testChannel = (channel) => {
       testForm.channel_type = channel.type
+      
+      // 根据渠道类型设置默认的测试目标
+      if (channel.type === 'EMAIL') {
+        testForm.target = 'test@example.com'
+      } else if (channel.type === 'SMS') {
+        testForm.target = '13800138000'
+      } else if (channel.type === 'WEBHOOK') {
+        // 从渠道配置中获取webhook_url
+        testForm.target = channel.config?.webhook_url || ''
+      } else if (channel.type === 'VOICE_CALL') {
+        testForm.target = '13800138000'
+      } else {
+        testForm.target = ''
+      }
+      
       testDialogVisible.value = true
     }
     
     const sendTestNotification = async () => {
       try {
         testing.value = true
-        // 实际应该调用API发送测试通知
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        ElMessage.success('测试通知发送成功')
+        
+        // 调用后端API发送测试通知
+        const response = await request.post('/notification/test', {
+          channel_type: testForm.channel_type,
+          to: testForm.target,
+          user_id: 1 // 当前用户ID
+        })
+        
+        ElMessage.success(response.message || '测试通知发送成功')
         testDialogVisible.value = false
+        
+        // 刷新通知日志
+        await loadNotificationLogs()
+        
       } catch (error) {
-        ElMessage.error('测试通知发送失败')
+        console.error('测试通知失败:', error)
+        const errorMsg = error.response?.data?.error || '测试通知发送失败'
+        ElMessage.error(errorMsg)
       } finally {
         testing.value = false
       }
@@ -502,21 +602,16 @@ export default {
         }
         
         // 调用API保存配置
-        // await notifications.updateChannel(configData)
-        
-        // 模拟保存成功
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // 更新本地数据
-        const channelIndex = channelsList.value.findIndex(c => c.id === configForm.id)
-        if (channelIndex !== -1) {
-          channelsList.value[channelIndex] = {
-            ...channelsList.value[channelIndex],
-            name: configForm.name,
-            is_active: configForm.is_active,
-            config: configData.config
-          }
+        if (configForm.id) {
+          // 更新现有渠道
+          await request.put(`/notification/channels/${configForm.id}`, configData)
+        } else {
+          // 创建新渠道
+          await request.post('/notification/channels', configData)
         }
+        
+        // 刷新渠道列表
+        await loadChannels()
         
         ElMessage.success('通知渠道配置保存成功')
         configDialogVisible.value = false
@@ -529,7 +624,13 @@ export default {
     }
     
     const viewLogDetail = (log) => {
-      ElMessage.info('查看日志详情功能开发中')
+      selectedLog.value = log
+      logDetailDialogVisible.value = true
+    }
+    
+    const closeLogDetailDialog = () => {
+      logDetailDialogVisible.value = false
+      selectedLog.value = null
     }
     
     onMounted(() => {
@@ -547,6 +648,8 @@ export default {
       testDialogVisible,
       configDialogVisible,
       configFormRef,
+      logDetailDialogVisible,
+      selectedLog,
       configDialogTitle,
       preferences,
       testForm,
@@ -562,6 +665,7 @@ export default {
       updatePreferences,
       handleSaveConfig,
       viewLogDetail,
+      closeLogDetailDialog,
       loadNotificationLogs
     }
   }
@@ -598,5 +702,23 @@ export default {
 
 .log-card {
   margin-top: 20px;
+}
+
+.log-detail {
+  padding: 20px 0;
+}
+
+.content-box {
+  background-color: #f5f7fa;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
+  min-height: 20px;
+  word-break: break-all;
+}
+
+.text-muted {
+  color: #909399;
+  font-style: italic;
 }
 </style>

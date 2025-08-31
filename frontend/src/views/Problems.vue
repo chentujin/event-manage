@@ -1,10 +1,10 @@
 <template>
   <div class="problems">
     <div class="page-header">
-      <h1>故障管理</h1>
+      <h1>问题管理</h1>
       <el-button type="primary" @click="showCreateDialog">
         <el-icon><Plus /></el-icon>
-        新建故障
+        新建问题
       </el-button>
     </div>
     
@@ -54,6 +54,14 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="incident_id" label="关联故障ID" width="120">
+          <template #default="scope">
+            <span v-if="scope.row.incident_id" class="incident-link">
+              {{ scope.row.incident_id }}
+            </span>
+            <span v-else class="no-incident">未关联</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="160">
           <template #default="scope">
             {{ formatDate(scope.row.created_at) }}
@@ -81,14 +89,14 @@
       </div>
     </el-card>
     
-    <!-- 新建/编辑故障对话框 -->
+    <!-- 新建/编辑问题对话框 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="800px">
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
-        <el-form-item label="故障标题" prop="title">
-          <el-input v-model="form.title" placeholder="请输入故障标题" />
+        <el-form-item label="问题标题" prop="title">
+          <el-input v-model="form.title" placeholder="请输入问题标题" />
         </el-form-item>
-        <el-form-item label="故障描述" prop="description">
-          <el-input v-model="form.description" type="textarea" :rows="4" placeholder="请输入故障详细描述" />
+        <el-form-item label="问题描述" prop="description">
+          <el-input v-model="form.description" type="textarea" :rows="4" placeholder="请输入问题详细描述" />
         </el-form-item>
         <el-form-item label="优先级" prop="priority">
           <el-select v-model="form.priority" placeholder="请选择优先级">
@@ -96,6 +104,9 @@
             <el-option label="中" value="Medium" />
             <el-option label="低" value="Low" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="关联故障ID">
+          <el-input v-model="form.incident_id" placeholder="请输入关联的故障ID（可选）" />
         </el-form-item>
         <el-form-item label="根因分析">
           <el-input v-model="form.root_cause_analysis" type="textarea" :rows="3" placeholder="请输入根因分析" />
@@ -113,8 +124,8 @@
       </template>
     </el-dialog>
     
-    <!-- 故障详情对话框 -->
-    <el-dialog v-model="detailDialogVisible" title="故障详情" width="800px">
+    <!-- 问题详情对话框 -->
+    <el-dialog v-model="detailDialogVisible" title="问题详情" width="800px">
       <div v-if="currentProblem" class="problem-detail">
         <el-row :gutter="20">
           <el-col :span="12">
@@ -154,10 +165,10 @@
           
           <el-col :span="12">
             <div class="detail-section">
-              <h4>故障审批</h4>
+              <h4>问题审批</h4>
               <div v-if="currentProblem.status === 'Known Error'" class="approval-section">
                 <el-alert
-                  title="该故障已标记为已知错误，可以提交审批申请进行关闭"
+                  title="该问题已标记为已知错误，可以提交审批申请进行关闭"
                   type="info"
                   style="margin-bottom: 16px;"
                   show-icon
@@ -172,12 +183,12 @@
                 </el-button>
                 <div v-else>
                   <el-tag type="warning">审批中</el-tag>
-                  <p style="margin-top: 8px; color: #606266;">该故障已提交审批，请等待审批结果</p>
+                  <p style="margin-top: 8px; color: #606266;">该问题已提交审批，请等待审批结果</p>
                 </div>
               </div>
               <div v-else>
                 <el-alert
-                  title="只有已知错误的故障才能提交审批申请"
+                  title="只有已知错误的问题才能提交审批申请"
                   type="warning"
                   show-icon
                 />
@@ -238,13 +249,15 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { problems } from '@/api'
+import { useRoute } from 'vue-router'
+import request from '@/utils/request'
 import dayjs from 'dayjs'
 
 export default {
   name: 'Problems',
   components: { Plus },
   setup() {
+    const route = useRoute()
     const loading = ref(false)
     const submitting = ref(false)
     const submittingApproval = ref(false)
@@ -273,24 +286,25 @@ export default {
       title: '',
       description: '',
       priority: 'Medium',
+      incident_id: '',
       root_cause_analysis: '',
       solution: ''
     })
     
     const formRules = {
-      title: [
-        { required: true, message: '请输入故障标题', trigger: 'blur' }
-      ],
-      description: [
-        { required: true, message: '请输入故障描述', trigger: 'blur' }
-      ],
+              title: [
+          { required: true, message: '请输入问题标题', trigger: 'blur' }
+        ],
+        description: [
+          { required: true, message: '请输入问题描述', trigger: 'blur' }
+        ],
       priority: [
         { required: true, message: '请选择优先级', trigger: 'change' }
       ]
     }
     
     const dialogTitle = computed(() => {
-      return isEdit.value ? '编辑故障' : '新建故障'
+      return isEdit.value ? '编辑问题' : '新建问题'
     })
     
     const loadProblems = async () => {
@@ -309,11 +323,11 @@ export default {
           }
         })
         
-        const data = await problems.list(params)
+        const data = await request.get('/problems', { params })
         problemsList.value = data.problems || []
         pagination.total = data.total || 0
       } catch (error) {
-        ElMessage.error('获取故障列表失败')
+        ElMessage.error('获取问题列表失败')
       } finally {
         loading.value = false
       }
@@ -332,6 +346,7 @@ export default {
         title: problem.title,
         description: problem.description,
         priority: problem.priority,
+        incident_id: problem.incident_id || '',
         root_cause_analysis: problem.root_cause_analysis || '',
         solution: problem.solution || ''
       })
@@ -341,16 +356,16 @@ export default {
     const viewProblem = async (problem) => {
       // 先获取最新的数据
       try {
-        const response = await problems.get(problem.id)
+        const response = await request.get(`/problems/${problem.id}`)
         currentProblem.value = response.problem
       } catch (error) {
         console.error('获取故障详情失败:', error)
         currentProblem.value = problem
       }
       
-      // 加载故障状态日志
+      // 加载问题状态日志
       try {
-        const logsResponse = await problems.getLogs(problem.id)
+        const logsResponse = await request.get(`/problems/${problem.id}/logs`)
         problemLogs.value = logsResponse.logs || []
       } catch (error) {
         console.error('获取故障日志失败:', error)
@@ -392,7 +407,7 @@ export default {
       
       try {
         // 更新后端数据
-        await problems.update(currentProblem.value.id, { status: newStatus })
+        await request.put(`/problems/${currentProblem.value.id}`, { status: newStatus })
         
         ElMessage.success('故障状态更新成功')
         
@@ -401,7 +416,7 @@ export default {
         
         // 重新加载状态日志
         try {
-          const logsResponse = await problems.getLogs(currentProblem.value.id)
+          const logsResponse = await request.get(`/problems/${currentProblem.value.id}/logs`)
           problemLogs.value = logsResponse.logs || []
         } catch (error) {
           console.error('刷新故障日志失败:', error)
@@ -450,6 +465,7 @@ export default {
         title: '',
         description: '',
         priority: 'Medium',
+        incident_id: '',
         root_cause_analysis: '',
         solution: ''
       })
@@ -464,11 +480,11 @@ export default {
         submitting.value = true
         
         if (isEdit.value) {
-          await problems.update(form.id, form)
-          ElMessage.success('故障更新成功')
+          await request.put(`/problems/${form.id}`, form)
+          ElMessage.success('问题更新成功')
         } else {
-          await problems.create(form)
-          ElMessage.success('故障创建成功')
+          await request.post('/problems', form)
+          ElMessage.success('问题创建成功')
         }
         
         dialogVisible.value = false
@@ -551,6 +567,19 @@ export default {
     
     onMounted(() => {
       loadProblems()
+      
+      // 检查是否从故障管理页面跳转过来
+      if (route.query.create_from_incident) {
+        // 自动填充来自故障的信息
+        form.title = route.query.incident_title || '来自故障的问题'
+        form.description = route.query.incident_description || '此问题来源于故障处理过程中发现的根本原因'
+        
+        // 显示创建问题对话框
+        showCreateDialog()
+        
+        // 提示用户
+        ElMessage.info(`正在为故障"${route.query.incident_title}"创建问题记录`)
+      }
     })
     
     return {
@@ -627,6 +656,16 @@ export default {
 
 .problem-detail {
   padding: 20px 0;
+}
+
+.incident-link {
+  color: #409eff;
+  font-weight: bold;
+}
+
+.no-incident {
+  color: #999;
+  font-style: italic;
 }
 
 .detail-section {

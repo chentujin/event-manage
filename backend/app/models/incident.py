@@ -36,12 +36,11 @@ class Incident(db.Model):
     __tablename__ = 'incidents'
     
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(255), nullable=False)
+    title = db.Column(db.String(255))
     description = db.Column(db.Text, nullable=False)
-    status = db.Column(db.Enum('New', 'In Progress', 'On Hold', 'Resolved', 'Closed', 'Reopened'), 
-                      default='New')
-    impact = db.Column(db.Enum('High', 'Medium', 'Low'), nullable=False)
-    urgency = db.Column(db.Enum('High', 'Medium', 'Low'), nullable=False)
+    status = db.Column(db.String(20), default='New')
+    impact = db.Column(db.String(20), nullable=False)
+    urgency = db.Column(db.String(20), nullable=False)
     
     # 外键
     service_id = db.Column(db.Integer, db.ForeignKey('services.id'))
@@ -51,12 +50,18 @@ class Incident(db.Model):
     # 时间戳
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    started_at = db.Column(db.DateTime)
     resolved_at = db.Column(db.DateTime)
     closed_at = db.Column(db.DateTime)
     
     # 关系
     comments = db.relationship('IncidentComment', backref='incident', cascade='all, delete-orphan')
     problems = db.relationship('Problem', secondary=incident_problem, backref='incidents')
+    
+    # 添加缺失的关系定义
+    assignee = db.relationship('User', foreign_keys=[assignee_id], backref='assigned_incidents')
+    reporter = db.relationship('User', foreign_keys=[reporter_id], backref='reported_incidents')
+    # service关系已通过Service模型的backref定义
     
     @hybrid_property
     def priority(self):
@@ -75,23 +80,37 @@ class Incident(db.Model):
     
     def to_dict(self):
         """转换为字典"""
+        # 生成F-格式的故障ID
+        from datetime import datetime
+        created_date = self.created_at.strftime('%Y%m%d') if self.created_at else datetime.now().strftime('%Y%m%d')
+        formatted_incident_id = f"F-{created_date}-{self.id:03d}"
+        
         return {
             'id': self.id,
+            'incident_id': formatted_incident_id,  # 使用F-格式的故障ID
             'title': self.title,
             'description': self.description,
             'status': self.status,
             'impact': self.impact,
             'urgency': self.urgency,
             'priority': self.priority,
+            'severity': self.impact,  # 添加severity字段以兼容前端，映射到impact
+            'assignee_id': self.assignee_id,  # 添加assignee_id字段以兼容前端
+            'reporter_id': self.reporter_id,  # 添加reporter_id字段以兼容前端
+            'service_id': self.service_id,  # 添加service_id字段以兼容前端
             'service': self.service.to_dict() if self.service else None,
             'assignee': self.assignee.to_dict() if self.assignee else None,
             'reporter': self.reporter.to_dict() if self.reporter else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
             'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
             'closed_at': self.closed_at.isoformat() if self.closed_at else None,
+            'comments': [comment.to_dict() for comment in self.comments],
             'comments_count': len(self.comments),
-            'problems': [p.id for p in self.problems]
+            'problems': [p.id for p in self.problems],
+            'alerts': [],  # 添加默认空数组以兼容前端
+            'timeline': []  # 包含时间线数据
         }
 
 class IncidentComment(db.Model):
@@ -104,6 +123,9 @@ class IncidentComment(db.Model):
     content = db.Column(db.Text, nullable=False)
     is_private = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 关系
+    user = db.relationship('User', foreign_keys=[user_id])
     
     def to_dict(self):
         """转换为字典"""
@@ -131,7 +153,7 @@ class IncidentStatusLog(db.Model):
     
     # 关系
     incident = db.relationship('Incident', backref='status_logs')
-    user = db.relationship('User')
+    user = db.relationship('User', foreign_keys=[user_id])
     
     def to_dict(self):
         """转换为字典"""
@@ -171,6 +193,24 @@ class Problem(db.Model):
     
     def to_dict(self):
         """转换为字典"""
+        # 获取关联的故障ID（取第一个）
+        incident_id = None
+        if self.incidents:
+            # 从关联的故障中获取完整的incident_id
+            incident = self.incidents[0]
+            
+            # 直接使用故障的incident_id字段，它已经是F-格式
+            if hasattr(incident, 'incident_id'):
+                incident_id = incident.incident_id
+            else:
+                # 如果没有incident_id字段，尝试调用to_dict方法
+                try:
+                    incident_dict = incident.to_dict()
+                    incident_id = incident_dict.get('incident_id')
+                except Exception:
+                    # 最后尝试使用id字段生成F-格式
+                    incident_id = f"F-{incident.created_at.strftime('%Y%m%d') if incident.created_at else '00000000'}-{incident.id:03d}" if hasattr(incident, 'created_at') else str(incident.id)
+        
         return {
             'id': self.id,
             'title': self.title,
@@ -180,6 +220,7 @@ class Problem(db.Model):
             'root_cause_analysis': self.root_cause_analysis,
             'solution': self.solution,
             'current_approval_id': self.current_approval_id,
+            'incident_id': incident_id,  # 返回完整的F-格式故障ID
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'closed_at': self.closed_at.isoformat() if self.closed_at else None,

@@ -32,10 +32,32 @@ def init_default_data():
         ('problem:write', '创建和编辑故障'),
         ('problem:approve', '审批故障解决方案'),
         
+        # 复盘管理权限
+        ('postmortem:read', '查看复盘'),
+        ('postmortem:write', '创建和编辑复盘'),
+        ('postmortem:approve', '审批复盘'),
+        ('postmortem:publish', '发布复盘'),
+        
+        # 行动项管理权限
+        ('action_item:read', '查看行动项'),
+        ('action_item:write', '创建和编辑行动项'),
+        ('action_item:assign', '分配行动项'),
+        ('action_item:complete', '完成行动项'),
+        
+        # 告警管理权限
+        ('alert:read', '查看告警'),
+        ('alert:write', '创建和编辑告警'),
+        
         # 系统管理权限
         ('system:admin', '系统管理'),
         ('system:config', '系统配置'),
         ('notification:admin', '通知管理'),
+        ('approval:admin', '审批流程管理'),
+        
+        # 审批管理权限
+        ('approval:read', '查看审批流程'),
+        ('approval:write', '创建和编辑审批流程'),
+        ('approval:approve', '审批操作'),
         ('approval:admin', '审批流程管理'),
         
         # 报表权限
@@ -56,27 +78,43 @@ def init_default_data():
             'user:read', 'user:write', 'user:delete', 'user:activate',
             'incident:read', 'incident:write', 'incident:assign', 'incident:close', 'incident:comment',
             'problem:read', 'problem:write', 'problem:approve',
-            'system:admin', 'system:config', 'notification:admin', 'approval:admin',
+            'postmortem:read', 'postmortem:write', 'postmortem:approve', 'postmortem:publish',
+            'action_item:read', 'action_item:write', 'action_item:assign', 'action_item:complete',
+            'alert:read', 'alert:write',  # 添加告警权限
+            'approval:read', 'approval:write', 'approval:approve', 'approval:admin',  # 添加审批权限
+            'system:admin', 'system:config', 'notification:admin',
             'report:read', 'dashboard:read'
         ]),
         ('Problem Manager', '故障经理', [
             'incident:read', 'incident:write', 'incident:assign', 'incident:close', 'incident:comment',
             'problem:read', 'problem:write', 'problem:approve',
+            'alert:read', 'alert:write',  # 添加告警权限
+            'report:read', 'dashboard:read'
+        ]),
+        ('track-management', '质量管理', [
+            'incident:read', 'incident:write', 'incident:assign', 'incident:close', 'incident:comment',
+            'problem:read', 'problem:write', 'problem:approve',
+            'postmortem:read', 'postmortem:write', 'postmortem:approve', 'postmortem:publish',
+            'action_item:read', 'action_item:write', 'action_item:assign', 'action_item:complete',
+            'alert:read', 'alert:write',
             'report:read', 'dashboard:read'
         ]),
         ('Engineer', '工程师', [
             'incident:read', 'incident:write', 'incident:comment',
             'problem:read', 'problem:write',
+            'alert:read', 'alert:write',  # 添加告警权限
             'dashboard:read'
         ]),
         ('Service Desk', '服务台', [
             'incident:read', 'incident:write', 'incident:comment',
             'problem:read',
+            'alert:read', 'alert:write',  # 添加告警权限
             'dashboard:read'
         ]),
         ('Viewer', '只读用户', [
             'incident:read',
             'problem:read',
+            'alert:read',  # 添加告警权限
             'dashboard:read'
         ])
     ]
@@ -94,6 +132,28 @@ def init_default_data():
             db.session.add(role)
     
     db.session.commit()
+    
+    # 创建默认admin账号
+    if not User.query.filter_by(username='admin').first():
+        admin_user = User(
+            username='admin',
+            email='admin@example.com',
+            password_hash=generate_password_hash('admin123'),
+            real_name='系统管理员',
+            department='IT管理部',
+            is_active=True
+        )
+        
+        # 分配Admin角色
+        admin_role = Role.query.filter_by(name='Admin').first()
+        if admin_role:
+            admin_user.roles.append(admin_role)
+        
+        db.session.add(admin_user)
+        db.session.commit()
+        print("默认管理员账号创建完成！")
+        print("用户名: admin")
+        print("密码: admin123")
     
     # 创建默认服务
     services_data = [
@@ -207,6 +267,7 @@ def init_default_data():
     
     print("默认数据初始化完成！")
     print("- 创建了基础权限和角色")
+    print("- 创建了默认管理员账号")
     print("- 创建了默认服务目录")
     print("- 创建了通知模板")
     print("- 创建了审批流程")

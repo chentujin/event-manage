@@ -24,6 +24,21 @@ const routes = [
         component: () => import('@/views/Incidents.vue')
       },
       {
+        path: '/alerts',
+        name: 'Alerts',
+        component: () => import('@/views/Alerts.vue')
+      },
+      {
+        path: '/incidents-new',
+        name: 'IncidentsNew',
+        component: () => import('@/views/IncidentsNew.vue')
+      },
+      {
+        path: '/postmortems',
+        name: 'PostMortems',
+        component: () => import('@/views/PostMortems.vue')
+      },
+      {
         path: '/problems',
         name: 'Problems',
         component: () => import('@/views/Problems.vue')
